@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
-from couchpotato.core.helpers.encoding import tryUrlencode
 from couchpotato.core.helpers.variable import tryInt
 from couchpotato.core.logger import CPLog
 from couchpotato.core.providers.torrent.base import TorrentProvider
@@ -24,7 +23,7 @@ class HDTorrents(TorrentProvider):
     def _search(self, movie, quality, results):
 
         url = self.urls['search'] % (movie['library']['identifier'])#, cats[0])
-        data = self.getHTMLData(url, opener = self.login_opener)
+        data = self.getHTMLData(url)
         
         if data:
           
@@ -89,11 +88,11 @@ class HDTorrents(TorrentProvider):
               log.error('Failed getting results from %s: %s', (self.getName(), traceback.format_exc()))
 
     def getLoginParams(self):
-        return tryUrlencode({
+        return {
             'uid': self.conf('username'),
             'pwd': self.conf('password'),
             'Login': 'submit',
-        })
+        }
 
     def loginSuccess(self, output):
         return "if your browser doesn\'t have javascript enabled" or 'logout.php' in output.lower()
