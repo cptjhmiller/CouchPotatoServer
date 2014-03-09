@@ -39,18 +39,26 @@ class HDTorrents(TorrentProvider):
               if not entries:
                   return
 
-              torrent_id = entries[21].find('div')['id']
-              torrent_age = datetime.now() - datetime.strptime(entries[15].get_text()[:8] + ' ' + entries[15].get_text()[-10::], '%H:%M:%S %d/%m/%Y')
+              base = 21
+              extend = 0
+
+              try:
+                  torrent_id = entries[base].find('div')['id']
+              except:
+                  extend = 2
+                  torrent_id = entries[base + extend].find('div')['id']
+
+              torrent_age = datetime.now() - datetime.strptime(entries[15 + extend].get_text()[:8] + ' ' + entries[15 + extend].get_text()[-10::], '%H:%M:%S %d/%m/%Y')
               
               results.append({
                               'id': torrent_id,
-                              'name': entries[20].find('a')['title'].strip('History - ').replace('Blu-ray', 'bd50'),
-                              'url': self.urls['home'] % entries[13].find('a')['href'],
+                              'name': entries[20 + extend].find('a')['title'].strip('History - ').replace('Blu-ray', 'bd50'),
+                              'url': self.urls['home'] % entries[13 + extend].find('a')['href'],
                               'detail_url': self.urls['detail'] % torrent_id,
-                              'size': self.parseSize(entries[16].get_text()),
+                              'size': self.parseSize(entries[16 + extend].get_text()),
                               'age': torrent_age.days,
-                              'seeders': tryInt(entries[18].get_text()),
-                              'leechers': tryInt(entries[19].get_text()),
+                              'seeders': tryInt(entries[18 + extend].get_text()),
+                              'leechers': tryInt(entries[19 + extend].get_text()),
               })
 
               #Now attempt to get any others
@@ -69,19 +77,24 @@ class HDTorrents(TorrentProvider):
                   if not block2:
                       continue
                   cells = block2.find_all('td')
-                  detail = cells[1].find('a')['href']
+                  try:
+                      extend = 0
+                      detail = cells[1 + extend].find('a')['href']
+                  except:
+                      extend = 1
+                      detail = cells[1 + extend].find('a')['href']
                   torrent_id = detail.replace('details.php?id=', '')
-                  torrent_age = datetime.now() - datetime.strptime(cells[5].get_text(), '%H:%M:%S %d/%m/%Y')
+                  torrent_age = datetime.now() - datetime.strptime(cells[5 + extend].get_text(), '%H:%M:%S %d/%m/%Y')
 
                   results.append({
                                   'id': torrent_id,
-                                  'name': cells[1].find('b').get_text().strip('\t ').replace('Blu-ray', 'bd50'),
-                                  'url': self.urls['home'] % cells[3].find('a')['href'],
-                                  'detail_url': self.urls['home'] % cells[1].find('a')['href'],
-                                  'size': self.parseSize(cells[6].get_text()),
+                                  'name': cells[1 + extend].find('b').get_text().strip('\t ').replace('Blu-ray', 'bd50'),
+                                  'url': self.urls['home'] % cells[3 + extend].find('a')['href'],
+                                  'detail_url': self.urls['home'] % cells[1 + extend].find('a')['href'],
+                                  'size': self.parseSize(cells[6 + extend].get_text()),
                                   'age': torrent_age.days,
-                                  'seeders': tryInt(cells[8].get_text()),
-                                  'leechers': tryInt(cells[9].get_text()),
+                                  'seeders': tryInt(cells[8 + extend].get_text()),
+                                  'leechers': tryInt(cells[9 + extend].get_text()),
                   })
 
           except:
