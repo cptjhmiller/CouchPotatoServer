@@ -36,7 +36,7 @@ class HDTorrents(TorrentProvider):
               #Get first entry in table
               entries = html.find_all('td', attrs={'align' : 'center'})
 
-              if not entries:
+              if len(entries) < 21:
                   return
 
               base = 21
