@@ -10,8 +10,8 @@ var NotificationBase = new Class({
 		// Listener
 		App.addEvent('unload', self.stopPoll.bind(self));
 		App.addEvent('reload', self.startInterval.bind(self, [true]));
-		App.addEvent('notification', self.notify.bind(self));
-		App.addEvent('message', self.showMessage.bind(self));
+		App.on('notification', self.notify.bind(self));
+		App.on('message', self.showMessage.bind(self));
 
 		// Add test buttons to settings page
 		App.addEvent('load', self.addTestButtons.bind(self));
@@ -50,9 +50,9 @@ var NotificationBase = new Class({
 		, 'top');
 		self.notifications.include(result);
 
-		if(result.data.important !== undefined && !result.read){
+		if((result.data.important !== undefined || result.data.sticky !== undefined) && !result.read){
 			var sticky = true
-			App.fireEvent('message', [result.message, sticky, result])
+			App.trigger('message', [result.message, sticky, result])
 		}
 		else if(!result.read){
 			self.setBadge(self.notifications.filter(function(n){ return !n.read}).length)
@@ -77,7 +77,7 @@ var NotificationBase = new Class({
 
 			var ids = []
 			rn.each(function(n){
-				ids.include(n.id)
+				ids.include(n._id)
 			})
 		}
 
@@ -103,7 +103,9 @@ var NotificationBase = new Class({
 
 		self.request = Api.request('notification.listener', {
     		'data': {'init':true},
-    		'onSuccess': self.processData.bind(self)
+    		'onSuccess': function(json){
+				self.processData(json, true)
+			}
 		}).send()
 
 		setInterval(function(){
@@ -124,7 +126,9 @@ var NotificationBase = new Class({
 			return;
 
 		self.request = Api.request('nonblock/notification.listener', {
-    		'onSuccess': self.processData.bind(self),
+    		'onSuccess': function(json){
+				self.processData(json, false)
+			},
     		'data': {
     			'last_id': self.last_id
     		},
@@ -141,14 +145,14 @@ var NotificationBase = new Class({
 		this.stopped = true;
 	},
 
-	processData: function(json){
+	processData: function(json, init){
 		var self = this;
 
 		// Process data
 		if(json){
 			Array.each(json.result, function(result){
-				App.fireEvent(result.type, result);
-				if(result.message && result.read === undefined)
+				App.trigger(result._t || result.type, [result]);
+				if(result.message && result.read === undefined && !init)
 					self.showMessage(result.message);
 			})
 
@@ -187,7 +191,7 @@ var NotificationBase = new Class({
 				new Element('a.close.icon2', {
 					'events': {
 						'click': function(){
-							self.markAsRead([data.id]);
+							self.markAsRead([data._id]);
 							hide_message();
 						}
 					}

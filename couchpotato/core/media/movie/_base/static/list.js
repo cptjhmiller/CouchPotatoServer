@@ -52,19 +52,20 @@ var MovieList = new Class({
 
 		self.getMovies();
 
-		App.addEvent('movie.added', self.movieAdded.bind(self))
-		App.addEvent('movie.deleted', self.movieDeleted.bind(self))
+		App.on('movie.added', self.movieAdded.bind(self))
+		App.on('movie.deleted', self.movieDeleted.bind(self))
 	},
 
 	movieDeleted: function(notification){
 		var self = this;
 
-		if(self.movies_added[notification.data.id]){
+		if(self.movies_added[notification.data._id]){
 			self.movies.each(function(movie){
-				if(movie.get('id') == notification.data.id){
+				if(movie.get('_id') == notification.data._id){
 					movie.destroy();
-					delete self.movies_added[notification.data.id];
+					delete self.movies_added[notification.data._id];
 					self.setCounter(self.counter_count-1);
+					self.total_movies--;
 				}
 			})
 		}
@@ -75,7 +76,8 @@ var MovieList = new Class({
 	movieAdded: function(notification){
 		var self = this;
 
-		if(self.options.add_new && !self.movies_added[notification.data.id] && notification.data.status.identifier == self.options.status){
+		self.fireEvent('movieAdded', notification);
+		if(self.options.add_new && !self.movies_added[notification.data._id] && notification.data.status == self.options.status){
 			window.scroll(0,0);
 			self.createMovie(notification.data, 'top');
 			self.setCounter(self.counter_count+1);
@@ -178,7 +180,7 @@ var MovieList = new Class({
 		m.fireEvent('injected');
 
 		self.movies.include(m)
-		self.movies_added[movie.id] = true;
+		self.movies_added[movie._id] = true;
 	},
 
 	createNavigation: function(){
@@ -257,8 +259,8 @@ var MovieList = new Class({
 		self.mass_edit_select_class = new Form.Check(self.mass_edit_select);
 		Quality.getActiveProfiles().each(function(profile){
 			new Element('option', {
-				'value': profile.id ? profile.id : profile.data.id,
-				'text': profile.label ? profile.label : profile.data.label
+				'value': profile.get('_id'),
+				'text': profile.get('label')
 			}).inject(self.mass_edit_quality)
 		});
 
@@ -279,14 +281,14 @@ var MovieList = new Class({
 
 			// Get available chars and highlight
 			if(!available_chars && (self.navigation.isDisplayed() || self.navigation.isVisible()))
-				Api.request('movie.available_chars', {
+				Api.request('media.available_chars', {
 					'data': Object.merge({
 						'status': self.options.status
 					}, self.filter),
 					'onSuccess': function(json){
 						available_chars = json.chars
 
-						json.chars.split('').each(function(c){
+						available_chars.each(function(c){
 							self.letters[c.capitalize()].addClass('available')
 						})
 
@@ -370,7 +372,7 @@ var MovieList = new Class({
 				'click': function(e){
 					(e).preventDefault();
 					this.set('text', 'Deleting..')
-					Api.request('movie.delete', {
+					Api.request('media.delete', {
 						'data': {
 							'id': ids.join(','),
 							'delete_from': self.options.identifier
@@ -390,6 +392,7 @@ var MovieList = new Class({
 								self.movies.erase(movie);
 								movie.destroy();
 								self.setCounter(self.counter_count-1);
+								self.total_movies--;
 							});
 
 							self.calculateSelected();
@@ -435,7 +438,7 @@ var MovieList = new Class({
 		var ids = []
 		self.movies.each(function(movie){
 			if (movie.isSelected())
-				ids.include(movie.get('id'))
+				ids.include(movie.get('_id'))
 		});
 
 		return ids
@@ -464,7 +467,7 @@ var MovieList = new Class({
 
 		self.offset = 0;
 		if(self.scrollspy){
-			self.load_more.show();
+			//self.load_more.show();
 			self.scrollspy.start();
 		}
 	},
@@ -547,8 +550,9 @@ var MovieList = new Class({
 
 		}
 
-		Api.request(self.options.api_call || 'movie.list', {
+		Api.request(self.options.api_call || 'media.list', {
 			'data': Object.merge({
+				'type': 'movie',
 				'status': self.options.status,
 				'limit_offset': self.options.limit ? self.options.limit + ',' + self.offset : null
 			}, self.filter),

@@ -57,6 +57,19 @@ Page.Home = new Class({
 			'limit': null,
 			'onLoaded': function(){
 				self.chain.callChain();
+			},
+			'onMovieAdded': function(notification){
+
+				// Track movie added
+				var after_search = function(data){
+					if(notification.data._id != data.data._id) return;
+
+					// Force update after search
+					self.available_list.update();
+					App.off('movie.searcher.ended', after_search);
+				}
+				App.on('movie.searcher.ended', after_search);
+
 			}
 		});
 
@@ -93,10 +106,9 @@ Page.Home = new Class({
 				timer,
 				highest = 100;
 
-			images.each(function(img_container){
-				img_container.getElements('img').addEvent('load', function(){
-					var img = this,
-						height = img.getSize().y;
+			images.each(function(img){
+				img.addEvent('load', function(){
+					var height = img.getSize().y;
 					if(!highest || highest < height){
 						highest = height;
 						if(timer) clearTimeout(timer);
@@ -111,10 +123,8 @@ Page.Home = new Class({
 				if(timer) clearTimeout(timer);
 				timer = (function(){
 					var highest = 100;
-					images.each(function(img_container){
-						var img = img_container.getElement('img');
-						if(!img) return
-
+					images.each(function(img){
+						img.setStyle('height', null);
 						var height = img.getSize().y;
 						if(!highest || highest < height)
 							highest = height;
